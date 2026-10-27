@@ -9,28 +9,42 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtService jwtService)
-            throws Exception {
+        /**
+         * @param http
+         * @param jwtService
+         * @param maxRequisicoes
+         * @return
+         * @throws Exception
+         */
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http,
+                        JwtService jwtService,
+                        @Value("${rate-limit.max-requests}") int maxRequisicoes)
+                        throws Exception {
 
-        http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(sessao -> sessao.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/error").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().denyAll())
-                .exceptionHandling(erro -> erro
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService),
-                        UsernamePasswordAuthenticationFilter.class);
+                JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService);
 
-        return http.build();
-    }
+                http
+                                .csrf(csrf -> csrf.disable())
+                                .sessionManagement(
+                                                sessao -> sessao.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/auth/login", "/error").permitAll()
+                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/**").authenticated()
+                                                .anyRequest().denyAll())
+                                .exceptionHandling(erro -> erro
+                                                .authenticationEntryPoint(
+                                                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterAfter(new RateLimitFilter(maxRequisicoes), JwtAuthenticationFilter.class);
+
+                return http.build();
+        }
 }

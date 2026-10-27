@@ -27,3 +27,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local development TLS certificate (contains a private key)
+/api-gateway/src/main/resources/keystore.p12

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -23,9 +24,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Janela> janelas = new ConcurrentHashMap<>();
     private final int maxRequisicoes;
+    private final ApiErrorResponseWriter errorResponseWriter;
 
-    public RateLimitFilter(int maxRequisicoes) {
+    public RateLimitFilter(int maxRequisicoes, ApiErrorResponseWriter errorResponseWriter) {
         this.maxRequisicoes = maxRequisicoes;
+        this.errorResponseWriter = errorResponseWriter;
     }
 
     @Override
@@ -48,12 +51,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         if (atual.contador() > maxRequisicoes) {
             long segundos = (atual.inicio() + JANELA_MS - agora) / 1000 + 1;
-            response.setStatus(429);
             response.setHeader("Retry-After", String.valueOf(segundos));
-            response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"status\":429,\"error\":\"Too Many Requests\","
-                            + "\"message\":\"Limite de requisicoes excedido. Tente novamente mais tarde.\"}");
+            errorResponseWriter.write(response, HttpStatus.TOO_MANY_REQUESTS.value(),
+                    HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(),
+                    "Limite de requisicoes excedido. Tente novamente mais tarde.",
+                    request.getRequestURI());
             return;
         }
 

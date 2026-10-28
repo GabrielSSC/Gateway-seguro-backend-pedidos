@@ -3,12 +3,12 @@ package com.example.api_gateway;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
-import org.springframework.http.MediaType;
-import java.nio.charset.StandardCharsets;
+import org.springframework.web.client.RestClientException;
 
 @RestController
 public class ProxyController {
@@ -22,7 +22,7 @@ public class ProxyController {
     }
 
     @GetMapping("/api/**")
-    public ResponseEntity<byte[]> encaminhar(HttpServletRequest request) {
+    public ResponseEntity<?> encaminhar(HttpServletRequest request) {
         String destino = request.getRequestURI();
         if (request.getQueryString() != null) {
             destino += "?" + request.getQueryString();
@@ -34,14 +34,13 @@ public class ProxyController {
                     .uri(destino)
                     .header("X-Gateway-Authenticated", "true")
                     .retrieve()
-                    .onStatus(status -> status.isError(), (req, res) -> {
-                        throw new RuntimeException("Error forwarding request");
-                    })
                     .toEntity(byte[].class);
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"error\":\"Backend unavailable\"}".getBytes(StandardCharsets.UTF_8));
+                    .body(ApiErrorResponse.of(HttpStatus.BAD_GATEWAY.value(),
+                            HttpStatus.BAD_GATEWAY.getReasonPhrase(),
+                            "Servico de pedidos indisponivel.", request.getRequestURI()));
         }
 
         MediaType contentType = resposta.getHeaders().getContentType();

@@ -2,6 +2,7 @@ package com.example.api_gateway;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,7 @@ public class AuthController {
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         List<String> roles = null;
 
         if ("admin".equals(request.username()) && "admin123".equals(request.password())) {
@@ -30,7 +31,10 @@ public class AuthController {
         }
 
         if (roles == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Credenciais inválidas."));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiErrorResponse.of(HttpStatus.UNAUTHORIZED.value(),
+                            HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                            "Credenciais invalidas.", "/auth/login"));
         }
 
         String token = jwtService.gerarToken(request.username(), roles);

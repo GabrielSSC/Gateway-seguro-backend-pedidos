@@ -20,3 +20,20 @@ keytool -genkeypair -alias gateway -keyalg RSA -keysize 2048 -storetype PKCS12 -
 O comando usa a senha de desenvolvimento `changeit`. Mantenha a senha
 configurada localmente para coincidir com a senha do keystore. Clientes de teste
 precisam confiar explicitamente no certificado autoassinado.
+
+## Segredo JWT de desenvolvimento
+
+O gateway exige a variável de ambiente `JWT_SECRET`; não há um segredo padrão
+no projeto. Gere uma chave aleatória de 32 bytes no PowerShell antes de iniciar
+o gateway. A variável fica disponível somente na janela atual:
+
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+```
+
+Mantenha essa variável definida na mesma janela em que executar o gateway. Não
+compartilhe nem versione o valor gerado. Os testes usam uma chave exclusiva de
+teste e não dependem dessa variável.
